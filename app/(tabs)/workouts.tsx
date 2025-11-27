@@ -1,20 +1,24 @@
+import { ChevronDown, ChevronUp, Clock, Dumbbell, PlayCircle, Repeat, Calendar } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  SectionList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Alert
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
-import api from '../../lib/axios'; // 1. Importamos nossa API
+import { COLORS, SHADOWS } from '../../constants/theme';
+import api from '../../lib/axios';
 
-// ---
-// 2. Definimos os Tipos (para o TypeScript)
-// (Baseado no nosso schema do Prisma)
-// ---
+// Tipos baseados no backend
 interface Exercise {
   id: string;
   name: string;
   muscleGroup: string;
-  videoUrl?: string;
 }
-
 interface WorkoutExercise {
   id: string;
   sets: string;
@@ -22,156 +26,244 @@ interface WorkoutExercise {
   rest: string;
   exercise: Exercise;
 }
-
 interface WorkoutTemplate {
   id: string;
-  name: string; // Ex: "Treino A: Peito e Tríceps"
+  name: string;
   goal: string;
   level: string;
+  dayOfWeek: string;
   exercises: WorkoutExercise[];
 }
 
-// Estilos
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f2f5' },
-  safeArea: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#333' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  errorText: { fontSize: 16, color: 'red', textAlign: 'center' },
-  // Estilos dos Cards de Treino
-  workoutCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  workoutTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#3B5998',
-    marginBottom: 15,
-  },
-  exerciseItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  exerciseName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    flex: 1, // Para quebrar a linha se o nome for longo
-  },
-  exerciseDetails: {
-    fontSize: 16,
-    color: '#555',
-    marginLeft: 10,
-  },
-  logoutButton: {
-    backgroundColor: '#d9534f',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    margin: 20,
-  },
-  buttonText: { color: 'white', fontWeight: 'bold' },
-});
-// ---
+interface SectionData {
+  title: string;
+  data: WorkoutTemplate[];
+}
 
 export default function WorkoutsScreen() {
-  const { signOut } = useAuth();
-  
-  // 3. Estados para guardar os dados, loading e erros
-  const [workouts, setWorkouts] = useState<WorkoutTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [sections, setSections] = useState<SectionData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userGoal, setUserGoal] = useState<string>('');
 
-  // 4. Lógica para buscar os dados quando a tela abre
-  useEffect(() => {
-    const fetchWorkouts = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // A MÁGICA ACONTECE AQUI
-        // O token já está no 'api' graças ao AuthContext
-        const response = await api.get('/workouts/my-workouts');
-        
-        setWorkouts(response.data);
-      } catch (e: any) {
-        console.error("Falha ao buscar treinos:", e.response?.data);
-        setError(e.response?.data?.error || "Não foi possível carregar os treinos.");
-      } finally {
-        setIsLoading(false);
+  // Estado para controlar qual card está expandido
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const fetchWorkouts = async () => {
+    try {
+      const res = await api.get('/workouts/my-workouts');
+      const workouts: WorkoutTemplate[] = res.data;
+
+      if (workouts.length > 0) {
+        setUserGoal(workouts[0].goal);
       }
-    };
 
-    fetchWorkouts();
-  }, []); // O array vazio [] faz isso rodar apenas uma vez
+      // Agrupar por dia da semana
+      const daysOrder = ['SEGUNDA', 'TERCA', 'QUARTA', 'QUINTA', 'SEXTA', 'SABADO', 'DOMINGO'];
+      const grouped = daysOrder.reduce((acc, day) => {
+        const dayWorkouts = workouts.filter(w => w.dayOfWeek === day);
+        if (dayWorkouts.length > 0) {
+          acc.push({
+            title: day,
+            data: dayWorkouts
+          });
+        }
+        return acc;
+      }, [] as SectionData[]);
 
-  // 5. Renderização condicional
-  
-  // Se estiver carregando...
-  if (isLoading) {
+      setSections(grouped);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchWorkouts(); }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchWorkouts();
+    setRefreshing(false);
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleStartWorkout = () => {
+    Alert.alert("Em breve", "A funcionalidade de iniciar treino estará disponível em breve!");
+  };
+
+  const renderWorkout = ({ item }: { item: WorkoutTemplate }) => {
+    const isExpanded = expandedId === item.id;
+    const exerciseCount = item.exercises.length;
+
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B5998" />
-      </View>
-    );
-  }
-
-  // Se der erro...
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-          <Text style={styles.buttonText}>Tentar Novamente (Sair)</Text>
+      <View style={styles.card}>
+        <TouchableOpacity
+          style={styles.cardHeader}
+          onPress={() => toggleExpand(item.id)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.iconContainer}>
+            <Dumbbell size={24} color="#FFF" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 16 }}>
+            <Text style={styles.workoutName}>{item.name}</Text>
+            <Text style={styles.workoutInfo}>{exerciseCount} Exercícios • {item.level}</Text>
+          </View>
+          {isExpanded ? <ChevronUp color={COLORS.textLight} /> : <ChevronDown color={COLORS.textLight} />}
         </TouchableOpacity>
-      </View>
-    );
-  }
 
-  // Se tiver sucesso, mostra os treinos
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Meus Treinos</Text>
-      </View>
-      
-      <FlatList
-        data={workouts}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        renderItem={({ item: workout }) => (
-          <View style={styles.workoutCard}>
-            <Text style={styles.workoutTitle}>{workout.name}</Text>
-            {workout.exercises.map((workoutExercise) => (
-              <View key={workoutExercise.id} style={styles.exerciseItem}>
-                <Text style={styles.exerciseName}>{workoutExercise.exercise.name}</Text>
-                <Text style={styles.exerciseDetails}>
-                  {workoutExercise.sets} x {workoutExercise.reps}
-                </Text>
+        {isExpanded && (
+          <View style={styles.exercisesList}>
+            {item.exercises.map((ex, index) => (
+              <View key={ex.id} style={[
+                styles.exerciseRow,
+                index === item.exercises.length - 1 && { borderBottomWidth: 0 }
+              ]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.exerciseName}>{ex.exercise.name}</Text>
+                  <Text style={styles.muscleGroup}>{ex.exercise.muscleGroup}</Text>
+                </View>
+
+                <View style={styles.metaContainer}>
+                  <View style={styles.metaItem}>
+                    <Repeat size={14} color={COLORS.primary} />
+                    <Text style={styles.metaText}>{ex.sets}x{ex.reps}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Clock size={14} color={COLORS.textLight} />
+                    <Text style={styles.metaText}>{ex.rest}</Text>
+                  </View>
+                </View>
               </View>
             ))}
+
+            <TouchableOpacity style={styles.startButton} onPress={handleStartWorkout}>
+              <PlayCircle size={20} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.startButtonText}>INICIAR TREINO</Text>
+            </TouchableOpacity>
           </View>
         )}
-        ListFooterComponent={(
-          <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-            <Text style={styles.buttonText}>SAIR (Logout)</Text>
-          </TouchableOpacity>
-        )}
+      </View>
+    );
+  };
+
+  const renderSectionHeader = ({ section: { title } }: { section: { title: string } }) => (
+    <View style={styles.sectionHeader}>
+      <Calendar size={18} color={COLORS.primary} style={{ marginRight: 8 }} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Meus Treinos</Text>
+        <Text style={styles.subtitle}>
+          {userGoal
+            ? `Focados no seu objetivo: ${userGoal.replace('_', ' ')}`
+            : 'Carregando treinos...'}
+        </Text>
+      </View>
+
+      <SectionList
+        sections={sections}
+        renderItem={renderWorkout}
+        renderSectionHeader={renderSectionHeader}
+        keyExtractor={item => item.id}
+        contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        stickySectionHeadersEnabled={false}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Nenhum treino encontrado para seu perfil.</Text>
+            </View>
+          ) : null
+        }
       />
     </SafeAreaView>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
+  title: { fontSize: 32, fontWeight: 'bold', color: COLORS.text },
+  subtitle: { fontSize: 16, color: COLORS.textLight, marginTop: 4 },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    marginBottom: 16,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+  },
+  iconContainer: {
+    width: 56, height: 56,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  workoutName: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
+  workoutInfo: { fontSize: 14, color: COLORS.textLight, marginTop: 4 },
+
+  exercisesList: {
+    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  exerciseRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  exerciseName: { fontSize: 16, fontWeight: '600', color: COLORS.text },
+  muscleGroup: { fontSize: 13, color: COLORS.textLight, marginTop: 4 },
+
+  metaContainer: { alignItems: 'flex-end', gap: 6 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { fontSize: 13, color: COLORS.text, fontWeight: '500' },
+
+  startButton: {
+    backgroundColor: COLORS.success,
+    flexDirection: 'row',
+    justifyContent: 'center', alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 20,
+    ...SHADOWS.small,
+  },
+  startButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+
+  emptyContainer: { padding: 40, alignItems: 'center' },
+  emptyText: { color: COLORS.textLight, textAlign: 'center', fontSize: 16 },
+});

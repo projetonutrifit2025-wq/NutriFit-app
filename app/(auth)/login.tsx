@@ -1,18 +1,10 @@
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
+import { Dumbbell, Lock, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Button, Input } from '../../components/ui';
+import { COLORS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
-
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#3B5998', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  logo: { fontSize: 40, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 40 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 20 },
-  input: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 8, padding: 14, fontSize: 16, marginBottom: 10 },
-  button: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 10 },
-  buttonText: { color: '#3B5998', fontSize: 16, fontWeight: 'bold' },
-  linkText: { color: '#FFFFFF', marginTop: 20 },
-});
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -21,32 +13,59 @@ export default function LoginScreen() {
   const { signIn } = useAuth();
   
   const handleLogin = async () => {
-   
-
- router.push('/(tabs)/feed')
+    setLoading(true);
+    try { await signIn(email, password); } catch (e) {}
+    setLoading(false);
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.logo}>NutriFit</Text>
-      <Text style={styles.title}>LOGIN</Text>
-      
-      <TextInput style={styles.input} placeholder="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="Senha" value={password} onChangeText={setPassword} secureTextEntry />
-      
-      {loading ? (
-        <ActivityIndicator size="large" color="#fff" />
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>ENTRAR</Text>
-        </TouchableOpacity>
-      )}
-      
-      <Link href="/(auth)/register" asChild>
-        <TouchableOpacity>
-          <Text style={styles.linkText}>Não tem uma conta? Cadastre aqui</Text>
-        </TouchableOpacity>
-      </Link>
-    </View>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.logoCircle}>
+          <Dumbbell size={40} color={COLORS.primary} />
+        </View>
+        <Text style={styles.appName}>NutriFit</Text>
+      </View>
+
+      <View style={styles.formContainer}>
+        <Text style={styles.title}>Bem-vindo de volta!</Text>
+        <Text style={styles.subtitle}>Faça login para continuar seus treinos.</Text>
+
+        <View style={{ marginTop: 20 }}>
+          <Input 
+            placeholder="E-mail" value={email} onChangeText={setEmail} 
+            icon={<Mail size={20} color={COLORS.textLight} />} keyboardType="email-address"
+          />
+          <Input 
+            placeholder="Senha" value={password} onChangeText={setPassword} 
+            secureTextEntry icon={<Lock size={20} color={COLORS.textLight} />} 
+          />
+        </View>
+
+        <View style={{ marginTop: 20 }}>
+          <Button title="ENTRAR" onPress={handleLogin} loading={loading} />
+        </View>
+
+        {/* Link Corrigido com asChild */}
+        <Link href="/(auth)/register" asChild>
+          <TouchableOpacity style={styles.link}>
+            <Text style={{ textAlign: 'center', color: COLORS.textLight }}>
+              Não tem conta? <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>Cadastre-se</Text>
+            </Text>
+          </TouchableOpacity>
+        </Link>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.primary },
+  header: { height: '40%', justifyContent: 'center', alignItems: 'center' },
+  logoCircle: { width: 80, height: 80, backgroundColor: '#FFF', borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  appName: { fontSize: 32, fontWeight: 'bold', color: '#FFF', letterSpacing: 1 },
+  formContainer: { flex: 1, backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 30, elevation: 10 },
+  title: { fontSize: 24, fontWeight: 'bold', color: COLORS.text, textAlign: 'center' },
+  subtitle: { fontSize: 14, color: COLORS.textLight, textAlign: 'center', marginBottom: 20 },
+  link: { marginTop: 20, alignItems: 'center', padding: 10 },
+});
