@@ -47,6 +47,7 @@ const InitialLayout = () => {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="new-post" options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="profile/edit-modal" options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 };

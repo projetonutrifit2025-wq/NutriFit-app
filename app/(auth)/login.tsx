@@ -11,10 +11,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
-  
+
   const handleLogin = async () => {
     setLoading(true);
-    try { await signIn(email, password); } catch (e) {}
+    try { await signIn(email, password); } catch (e) { }
     setLoading(false);
   };
 
@@ -32,13 +32,13 @@ export default function LoginScreen() {
         <Text style={styles.subtitle}>Faça login para continuar seus treinos.</Text>
 
         <View style={{ marginTop: 20 }}>
-          <Input 
-            placeholder="E-mail" value={email} onChangeText={setEmail} 
+          <Input
+            placeholder="E-mail" value={email} onChangeText={setEmail}
             icon={<Mail size={20} color={COLORS.textLight} />} keyboardType="email-address"
           />
-          <Input 
-            placeholder="Senha" value={password} onChangeText={setPassword} 
-            secureTextEntry icon={<Lock size={20} color={COLORS.textLight} />} 
+          <Input
+            placeholder="Senha" value={password} onChangeText={setPassword}
+            secureTextEntry icon={<Lock size={20} color={COLORS.textLight} />}
           />
         </View>
 

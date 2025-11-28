@@ -6,6 +6,7 @@ import { COLORS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/axios';
 import { useRouter } from 'expo-router';
+import { toast } from 'sonner-native';
 
 interface UserProfile {
   name: string;
@@ -17,6 +18,10 @@ interface UserProfile {
     seguidores: number;
     peso: string;
   };
+}
+
+function handleInDev() {
+  toast.info('Em desenvolvimento');
 }
 
 export default function ProfileScreen() {
@@ -105,14 +110,14 @@ export default function ProfileScreen() {
             <Text style={styles.menuText}>Editar Dados Pessoais</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity onPress={handleInDev} style={styles.menuItem}>
             <View style={[styles.iconBox, { backgroundColor: '#DCFCE7' }]}>
               <TrendingUp size={20} color={COLORS.success} />
             </View>
             <Text style={styles.menuText}>Registrar Peso (Evolução)</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity onPress={handleInDev} style={styles.menuItem}>
             <View style={[styles.iconBox, { backgroundColor: '#F3F4F6' }]}>
               <Settings size={20} color={COLORS.textLight} />
             </View>

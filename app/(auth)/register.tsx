@@ -132,7 +132,7 @@ export default function SignUpScreen() {
           <Input placeholder="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" icon={<Mail size={20} color={COLORS.textLight} />} />
           <Input placeholder="Senha" value={password} onChangeText={setPassword} secureTextEntry icon={<Lock size={20} color={COLORS.textLight} />} />
 
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'column', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <Input
                 placeholder="Nascimento (DD/MM/AAAA)"
