@@ -7,11 +7,11 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import api from '../../lib/axios';
+import { toast } from 'sonner-native';
 
 // Tipos baseados no backend
 interface Exercise {
@@ -92,7 +92,7 @@ export default function WorkoutsScreen() {
   };
 
   const handleStartWorkout = () => {
-    Alert.alert("Em breve", "A funcionalidade de iniciar treino estará disponível em breve!");
+    toast.info("A funcionalidade de iniciar treino estará disponível em breve!");
   };
 
   const renderWorkout = ({ item }: { item: WorkoutTemplate }) => {
